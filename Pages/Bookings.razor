@@ -1,0 +1,103 @@
+﻿@page "/bookings"
+@using BookingSystem.Models
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@inject BookingSystem.Services.BookingService BookingService
+
+<h3>Bookings</h3>
+
+<div style="display:flex; gap:10px; align-items:center;">
+    <InputText @bind-Value="newBooking.Name" placeholder="Enter name" />
+
+    <InputDate @bind-Value="newBooking.Date"
+               Type="InputDateType.DateTimeLocal" />
+
+    <button @onclick="AddBooking">
+        Add Booking
+    </button>
+</div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color:red; margin-top:10px;">@errorMessage</p>
+    }
+
+<ul style="margin-top:15px;">
+    @foreach (var b in bookings)
+    {
+        <li>
+            @b.Name - @b.Date.ToString("dd-MM-yyyy HH:mm")
+            <button @onclick="() => ConfirmDelete(b.Id)" style="margin-left:10px;">
+                Delete
+            </button>
+        </li>
+    }
+</ul>
+
+@code {
+
+private List<Booking> bookings = new();
+
+    private Booking newBooking = new Booking
+    {
+        Date = DateTime.Now
+    };
+
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        bookings = (await BookingService.GetAllAsync())
+            .OrderBy(b => b.Date)
+            .ToList();
+    }
+
+    private async Task AddBooking()
+    {
+        if (string.IsNullOrWhiteSpace(newBooking.Name))
+        {
+            errorMessage = "Name is required";
+            return;
+        }
+        newBooking.Name = newBooking.Name.Trim();
+        newBooking.Name = char.ToUpper(newBooking.Name[0]) + newBooking.Name.Substring(1).ToLower();
+        try
+        {
+            await BookingService.AddAsync(newBooking);
+
+            bookings = (await BookingService.GetAllAsync())
+                .OrderBy(b => b.Date)
+                .ToList();
+
+            newBooking = new Booking
+            {
+                Date = DateTime.Now
+            };
+
+            errorMessage = "";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task Delete(int id)
+    {
+        await BookingService.DeleteAsync(id);
+
+        bookings = (await BookingService.GetAllAsync())
+            .OrderBy(b => b.Date)
+            .ToList();
+    }
+    @inject IJSRuntime JS
+
+    private async Task ConfirmDelete(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Are you sure?"))
+        {
+            await Delete(id);
+        }
+    }
+}
+
