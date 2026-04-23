@@ -1,3 +1,7 @@
+
+Run the project locally and navigate to:
+https://localhost:xxxx/bookings
+
 ## Architecture
 
 The application is structured using a simple layered architecture:
