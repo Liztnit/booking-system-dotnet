@@ -29,6 +29,24 @@ public class BookingService
         _context.Bookings.Add(booking);
         await _context.SaveChangesAsync();
     }
+    public async Task UpdateAsync(Booking booking)
+    {
+        var existing = await _context.Bookings.FindAsync(booking.Id);
+
+        if (existing == null)
+            throw new Exception("Booking not found");
+
+        var exists = await _context.Bookings
+            .AnyAsync(b => b.Id != booking.Id && b.Date == booking.Date);
+
+        if (exists)
+            throw new Exception("Time already booked");
+
+        existing.Name = booking.Name;
+        existing.Date = booking.Date;
+
+        await _context.SaveChangesAsync();
+    }
 
     public async Task DeleteAsync(int id)
     {

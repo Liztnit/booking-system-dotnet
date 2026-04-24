@@ -1,80 +1,195 @@
 ﻿@page "/bookings"
 @using BookingSystem.Models
-@using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Forms
 @inject BookingSystem.Services.BookingService BookingService
+@inject IJSRuntime JS
 
-<h3>Bookings</h3>
-
-<div style="display:flex; gap:10px; align-items:center;">
-    <InputText @bind-Value="newBooking.Name" placeholder="Enter name" />
-
-    <InputDate @bind-Value="newBooking.Date"
-               Type="InputDateType.DateTimeLocal" />
-
-    <button @onclick="AddBooking">
-        Add Booking
-    </button>
+<div class="page-header">
+    <h1>Booking System</h1>
+    <p>Manage your bookings</p>
 </div>
 
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <p style="color:red; margin-top:10px;">@errorMessage</p>
-    }
+<!-- ADD -->
+<div style="
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:30px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.1);
+">
+    <div style="display:flex; gap:10px; align-items:center;">
+        <input placeholder="Customer name" @bind="newName" />
 
-<ul style="margin-top:15px;">
+        <InputDate @bind-Value="newDate"
+                   Type="InputDateType.DateTimeLocal" />
+
+        <button class="btn-primary" @onclick="AddBooking">
+            Add
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <p class="error">@errorMessage</p>
+}
+
+<!-- LIST -->
+<ul style="list-style:none; padding:0;">
     @foreach (var b in bookings)
     {
-        <li>
-            @b.Name - @b.Date.ToString("dd-MM-yyyy HH:mm")
-            <button @onclick="() => ConfirmDelete(b.Id)" style="margin-left:10px;">
-                Delete
-            </button>
+        <li style="
+                margin-bottom:15px;
+                padding:18px;
+                border-radius:12px;
+                background:white;
+                box-shadow:0 6px 18px rgba(0,0,0,0.08);
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+            ">
+
+            <div>
+                <strong style="font-size:16px;">@b.Name</strong><br />
+                <small style="color:#9ca3af;">
+                    @b.Date.ToString("dd MMM yyyy, HH:mm")
+                </small>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button class="btn-secondary" @onclick="() => StartEdit(b)">
+                    Edit
+                </button>
+
+                <button class="btn-danger" @onclick="() => ConfirmDelete(b.Id)">
+                    Delete
+                </button>
+            </div>
+
         </li>
     }
 </ul>
 
+<!-- MODAL -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <input class="form-control mb-2"
+                       @bind="editingBooking.Name" />
+
+                <InputDate class="form-control mb-2"
+                           @bind-Value="editDate"
+                           Type="InputDateType.DateTimeLocal" />
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger py-2">@errorMessage</div>
+                }
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+
+                <button class="btn btn-primary"
+                        @onclick="SaveAndClose"
+                        disabled="@(!CanSave)">
+                    Save
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div class="toast align-items-center text-white bg-success border-0"
+         id="successToast">
+        <div class="d-flex">
+            <div class="toast-body">
+                @successMessage
+            </div>
+            <button type="button"
+                    class="btn-close btn-close-white me-2 m-auto"
+                    data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
 @code {
+    private List<Booking> bookings = new();
 
-private List<Booking> bookings = new();
+    private string newName = "";
+    private DateTime newDate = DateTime.Now;
 
-    private Booking newBooking = new Booking
-    {
-        Date = DateTime.Now
-    };
+    private Booking editingBooking = new Booking();
+    private DateTime editDate;
 
     private string errorMessage = "";
+    private string successMessage = "";
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadBookings();
+    }
+
+    private async Task LoadBookings()
     {
         bookings = (await BookingService.GetAllAsync())
             .OrderBy(b => b.Date)
             .ToList();
     }
 
+    private bool IsTimeTaken(DateTime date, int? ignoreId = null)
+    {
+        return bookings.Any(b => b.Date == date && b.Id != ignoreId);
+    }
+
+    private bool CanSave =>
+        !string.IsNullOrWhiteSpace(editingBooking.Name);
+
+    // ADD
     private async Task AddBooking()
     {
-        if (string.IsNullOrWhiteSpace(newBooking.Name))
+        if (string.IsNullOrWhiteSpace(newName))
         {
             errorMessage = "Name is required";
             return;
         }
-        newBooking.Name = newBooking.Name.Trim();
-        newBooking.Name = char.ToUpper(newBooking.Name[0]) + newBooking.Name.Substring(1).ToLower();
+
+        if (IsTimeTaken(newDate))
+        {
+            errorMessage = "Time already booked";
+            return;
+        }
+
         try
         {
-            await BookingService.AddAsync(newBooking);
-
-            bookings = (await BookingService.GetAllAsync())
-                .OrderBy(b => b.Date)
-                .ToList();
-
-            newBooking = new Booking
+            await BookingService.AddAsync(new Booking
             {
-                Date = DateTime.Now
-            };
+                Name = newName.Trim(),
+                Date = newDate
+            });
 
+            await ShowToast("Booking saved");
+
+            newName = "";
+            newDate = DateTime.Now;
             errorMessage = "";
+
+            await LoadBookings();
         }
         catch (Exception ex)
         {
@@ -82,22 +197,82 @@ private List<Booking> bookings = new();
         }
     }
 
-    private async Task Delete(int id)
+    // OPEN MODAL
+    private async Task StartEdit(Booking booking)
     {
-        await BookingService.DeleteAsync(id);
+        errorMessage = "";
 
-        bookings = (await BookingService.GetAllAsync())
-            .OrderBy(b => b.Date)
-            .ToList();
+        editingBooking = new Booking
+        {
+            Id = booking.Id,
+            Name = booking.Name,
+            Date = booking.Date
+        };
+
+        editDate = booking.Date;
+
+        await JS.InvokeVoidAsync("eval",
+            "new bootstrap.Modal(document.getElementById('editModal')).show()");
     }
-    @inject IJSRuntime JS
 
+    // SAVE
+    private async Task SaveAndClose()
+    {
+        try
+        {
+            await UpdateBooking();
+
+            await JS.InvokeVoidAsync("eval",
+                "bootstrap.Modal.getInstance(document.getElementById('editModal')).hide()");
+
+            await ShowToast("Booking updated");
+        }
+        catch
+        {
+            // fejl vises i modal
+        }
+    }
+
+    private async Task UpdateBooking()
+    {
+        if (string.IsNullOrWhiteSpace(editingBooking.Name))
+        {
+            errorMessage = "Name is required";
+            throw new Exception();
+        }
+
+        if (IsTimeTaken(editDate, editingBooking.Id))
+        {
+            errorMessage = "Time already booked";
+            throw new Exception();
+        }
+
+        editingBooking.Date = editDate;
+
+        await BookingService.UpdateAsync(editingBooking);
+
+        errorMessage = "";
+        await LoadBookings();
+    }
+
+    // DELETE
     private async Task ConfirmDelete(int id)
     {
         if (await JS.InvokeAsync<bool>("confirm", "Are you sure?"))
         {
-            await Delete(id);
+            await BookingService.DeleteAsync(id);
+            await LoadBookings();
+
+            await ShowToast("Booking deleted");
         }
     }
-}
 
+    // TOAST
+    private async Task ShowToast(string message)
+    {
+        successMessage = message;
+
+        await JS.InvokeVoidAsync("eval",
+            "new bootstrap.Toast(document.getElementById('successToast')).show()");
+    }
+}
