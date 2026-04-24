@@ -1,48 +1,40 @@
-# Booking System (.NET / Blazor)
+Booking System (Blazor)
 
-A simple booking system built with C# using .NET and Blazor.
+A simple booking system built with Blazor Server, Entity Framework Core, and Bootstrap.
 
-## Features
+Features:
+Create bookings with date and time
+Edit bookings using a modal popup
+Delete bookings with confirmation
+Prevent double-booking of the same time
+Validation and error handling
+Toast notifications for user feedback
+🛠️Technologies
+.NET 8 / Blazor Server
+Entity Framework Core (SQLite)
+Bootstrap 5
+ Getting Started
 
-* Create bookings
-* View bookings
-* Delete bookings
-* Input validation
-* Prevention of double bookings
-* SQLite database
+Clone the repository:
 
-## Tech Stack
+git clone https://github.com/Liztnit/booking-system-dotnet.git
 
-* C#
-* .NET 8
-* Blazor Server
-* Entity Framework Core
-* SQLite
+Run the project:
 
-## Demo
+dotnet run
 
-Run the project locally and navigate to:
-[https://localhost:xxxx/bookings](https://localhost:xxxx/bookings)
+Open in browser:
 
-## Architecture
+https://localhost:xxxx/bookings
 
-The application is structured using a simple layered architecture:
+ What I learned
+Managing state in Blazor without UI crashes
+Using Bootstrap modals correctly in Blazor
+Handling CRUD operations with Entity Framework
+Preventing data conflicts (double booking)
+Building a full-stack .NET application
+ Notes
 
-* **Models** – Data structures
-* **Data** – Database context (Entity Framework Core)
-* **Services** – Business logic
-* **Pages** – UI (Blazor)
-
-## Learning Goals
-
-This project was created to practice:
-
-* Full-stack development with .NET
-* Entity Framework Core
-* Blazor UI development
-* CRUD operations and validation
-
-## Author
-
+This project was built as a learning project and demonstrates core concepts in full-stack .NET development.
 Mike Agerboe Hjæresen
 
